@@ -581,6 +581,8 @@ class MainActivity : Activity() {
             if (bottom > 0) bottomMargin = bottom
         }
 
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
     private fun showError(action: String, error: Exception) {
         Log.e(TAG, action, error)
         toast("$action: ${error.localizedMessage ?: "unknown error"}")
