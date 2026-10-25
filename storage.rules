@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isEnabledAdmin() {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.enabled == true;
+    }
+
+    function shareDocument(shareId) {
+      return firestore.get(/databases/(default)/documents/shares/$(shareId)).data;
+    }
+
+    match /shares/{ownerUid}/{shareId}/{fileName} {
+      allow create, update: if request.auth != null
+        && request.auth.uid == ownerUid
+        && shareDocument(shareId).ownerUid == ownerUid
+        && shareDocument(shareId).storagePath == 'shares/' + ownerUid + '/' + shareId + '/' + fileName
+        && shareDocument(shareId).status == 'uploading'
+        && request.resource.size > 0
+        && request.resource.size < 100 * 1024 * 1024
+        && request.resource.contentType.matches('(image|video)/.*');
+
+      allow read: if request.auth != null
+        && shareDocument(shareId).status == 'approved'
+        && shareDocument(shareId).storagePath == 'shares/' + ownerUid + '/' + shareId + '/' + fileName
+        && (
+          request.auth.uid == ownerUid
+          || isEnabledAdmin()
+        );
+
+      allow delete: if request.auth != null && request.auth.uid == ownerUid;
+    }
+  }
+}

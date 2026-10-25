@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "MediaShare"
-include(":app", ":shm", ":rev")
+include(":app", ":shared", ":shm", ":rev")

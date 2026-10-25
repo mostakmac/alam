@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isEnabledAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.enabled == true;
+    }
+
+    match /admins/{adminUid} {
+      allow get: if signedIn() && request.auth.uid == adminUid;
+      allow list, create, update, delete: if false;
+    }
+
+    match /shares/{shareId} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'ownerUid', 'fileName', 'contentType',
+          'storagePath', 'status', 'createdAt'
+        ])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == 'uploading'
+        && request.resource.data.fileName is string
+        && request.resource.data.contentType is string
+        && request.resource.data.contentType.matches('(image|video)/.*')
+        && request.resource.data.storagePath
+          == 'shares/' + request.auth.uid + '/' + shareId + '/' + request.resource.data.fileName;
+
+      allow get, list: if signedIn()
+        && (
+          resource.data.ownerUid == request.auth.uid
+          || (resource.data.status == 'approved' && isEnabledAdmin())
+        );
+
+      allow update: if signedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && resource.data.status == 'uploading'
+        && request.resource.data.status == 'approved'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+  }
+}

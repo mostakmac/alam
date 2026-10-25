@@ -30,10 +30,37 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Check Firebase client configuration
+        id: firebase-config
+        env:
+          FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET: ${{ vars.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_SENDER_ID: ${{ vars.FIREBASE_SENDER_ID }}
+          FIREBASE_APP_ID_SHM: ${{ vars.FIREBASE_APP_ID_SHM }}
+          FIREBASE_APP_ID_REV: ${{ vars.FIREBASE_APP_ID_REV }}
+        run: |
+          if [[ -z "$FIREBASE_API_KEY" || -z "$FIREBASE_PROJECT_ID" || \
+                -z "$FIREBASE_STORAGE_BUCKET" || -z "$FIREBASE_SENDER_ID" || \
+                -z "$FIREBASE_APP_ID_SHM" || -z "$FIREBASE_APP_ID_REV" ]]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::APKs will compile, but no connected APK artifact will be published until all Firebase Actions variables listed in README.md are configured."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build SHM and REV debug APKs
+        env:
+          FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET: ${{ vars.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_SENDER_ID: ${{ vars.FIREBASE_SENDER_ID }}
+          FIREBASE_APP_ID_SHM: ${{ vars.FIREBASE_APP_ID_SHM }}
+          FIREBASE_APP_ID_REV: ${{ vars.FIREBASE_APP_ID_REV }}
         run: gradle --no-daemon :shm:assembleDebug :rev:assembleDebug
 
       - name: Save SHM and REV APKs
+        if: steps.firebase-config.outputs.configured == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: media-share-apks
