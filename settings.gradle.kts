@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ClassBell"
-include(":app")
+rootProject.name = "MediaShare"
+include(":app", ":shm", ":rev")
